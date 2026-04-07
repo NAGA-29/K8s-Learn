@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-api
+  namespace: mini-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: simple-api
+  template:
+    metadata:
+      labels:
+        app: simple-api
+    spec:
+      containers:
+        - name: api
+          image: simple-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          # 意図的に壊れたreadinessProbe（存在しないパス）
+          readinessProbe:
+            httpGet:
+              path: /healthz  # 正しくは /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
