@@ -8,14 +8,7 @@ spec:
     - name: oom
       image: alpine
       command: ["/bin/sh", "-c"]
-      # メモリを大量消費してOOMKillを再現
-      args:
-        - |
-          echo "Allocating memory to trigger OOMKill..."
-          # /dev/urandom から読み込んで変数に溜めてメモリを消費
-          head -c 64M /dev/urandom > /tmp/data
-          tail -f /dev/null
+      args: ["dd if=/dev/zero of=/dev/null bs=1M & tail -f /dev/null"]
       resources:
         limits:
           memory: "32Mi"
-  restartPolicy: Never

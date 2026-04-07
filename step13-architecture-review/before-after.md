@@ -1,86 +1,120 @@
 # Before / After 比較表
 
-Step11のミニ構成（Before）と、本番想定の改善構成（After）を比較します。
+Step 11 のミニ構成（Before）と、本番想定の改善構成（After）を比較する。
 
 ---
 
-## 構成比較
+## 構成図の比較
 
-| 観点 | Before（kind学習構成） | After（本番想定） |
-|------|----------------------|------------------|
-| **クラスタ** | kind（ローカル） | EKS（マネージド） |
-| **ノード数** | 1 control-plane + 2 worker | 3+ worker nodes（マルチAZ） |
-| **Ingress** | NGINX Ingress (kind用) | AWS Load Balancer Controller + ALB |
-| **DNS** | /etc/hosts 手動設定 | Route53 + ExternalDNS |
-| **TLS** | なし | ACM証明書 + ALBでTLS終端 |
-| **Web replicas** | 2 | 3+（HPA付き） |
-| **API replicas** | 2 | 3+（HPA付き） |
-| **Redis** | 単一Pod | Redis Cluster or ElastiCache |
-| **DB** | なし | RDS（Multi-AZ） |
-| **Secret管理** | base64 YAML | Secrets Manager + External Secrets |
-| **ConfigMap管理** | 手動apply | GitOps (ArgoCD) |
-| **ログ** | kubectl logs | Fluentbit → CloudWatch Logs |
-| **メトリクス** | 自前Prometheus | Managed Prometheus / CloudWatch |
-| **アラート** | なし | Alertmanager → Slack/PagerDuty |
-| **トレース** | なし | X-Ray / Tempo |
-| **デプロイ** | 手動 kubectl apply | GitHub Actions → ArgoCD |
-| **ロールバック** | 手動 rollout undo | ArgoCD自動ロールバック |
-| **Network Policy** | なし | Pod間通信を制限 |
-| **Security Context** | デフォルト（root） | runAsNonRoot + readOnlyRootFilesystem |
-| **イメージスキャン** | なし | Trivy / ECRスキャン |
-| **RBAC** | 未設定 | 最小権限原則 |
-| **バックアップ** | なし | Velero + RDSスナップショット |
-| **コスト** | 無料 | ~$200-500/月（dev環境） |
-| **可用性** | 保証なし | 99.9%+ SLA |
-| **障害対応** | 手動調査 | Runbook + 自動復旧 |
-| **負荷試験** | 未実施 | 定期的に実施 |
+### Before（現在の kind 学習構成）
 
----
-
-## 改善の優先順位
-
-本番化に向けて改善すべき項目を優先度順に並べます。
-
-### 優先度: 高（本番リリース前に必須）
-
-1. **TLS/HTTPS対応** — 通信の暗号化は最低要件
-2. **Secret暗号化** — base64は暗号化ではない
-3. **Security Context** — rootでの実行を禁止
-4. **ログ集約** — 障害時に調査できない
-5. **アラート設定** — 障害に気づけない
-
-### 優先度: 中（本番リリース後早期に対応）
-
-6. **Redis冗長化** — SPOFの排除
-7. **Network Policy** — 不要な通信を遮断
-8. **HPA設定** — 負荷に応じた自動スケール
-9. **CI/CDパイプライン** — デプロイの自動化
-10. **バックアップ** — データ保護
-
-### 優先度: 低（段階的に改善）
-
-11. **分散トレーシング** — マイクロサービス間のボトルネック特定
-12. **カオスエンジニアリング** — 障害耐性の検証
-13. **コスト最適化** — Spot Instances, Savings Plans
-14. **マルチクラスタ** — DR対策
-15. **Service Mesh** — 通信の可観測性・制御
-
----
-
-## Before構成の弱点まとめ
-
+```mermaid
+flowchart LR
+    User -->|HTTP| Ingress
+    Ingress -->|/| Web
+    Ingress -->|/api| API
+    API -->|TCP 6379| Redis[(Redis)]
 ```
-問題の深刻度:
-🔴 致命的  → Secret平文、TLSなし、アラートなし
-🟡 重要    → Redis SPOF、ログ集約なし、手動デプロイ
-🟢 改善推奨 → Network Policy、トレーシング、カオスエンジニアリング
+
+### After（本番想定の改善構成）
+
+```mermaid
+flowchart LR
+    User -->|HTTPS| ALB[ALB / Ingress]
+    ALB -->|/| Web
+    ALB -->|/api| API
+    API -->|TCP 6379| RedisCluster[(Redis Cluster)]
+    API -->|TCP 5432| DB[(RDS PostgreSQL)]
+    API -->|SQS| SQS[SQS / Queue]
+    Prometheus -->|scrape| API
+    Prometheus -->|scrape| Web
+    Prometheus --> Alertmanager
+    Alertmanager --> Slack[Slack 通知]
 ```
 
 ---
 
-## 教訓
+## 詳細比較表
 
-- **「動く」は出発点に過ぎない** — 本番運用には可用性・セキュリティ・運用性が必須
-- **全部を一度に改善しない** — 優先度を付けて段階的に進める
-- **コストと効果のバランス** — 過剰な冗長化はコストに跳ね返る
-- **自動化が鍵** — 手動操作は事故のもと
+| # | 観点 | 現在（kind 学習構成） | 改善後（本番想定） |
+|---|------|---------------------|-------------------|
+| 1 | ロードバランサー | NGINX Ingress Controller（kind内） | AWS ALB / NLB（マネージド、冗長化済み） |
+| 2 | TLS/SSL | なし（HTTP のみ） | cert-manager + Let's Encrypt で自動更新、または ACM |
+| 3 | DNS | /etc/hosts に手動設定 | Route 53 / Cloud DNS でドメイン管理 |
+| 4 | API サーバ | Deployment 1レプリカ | Deployment 3レプリカ以上 + HPA（CPU/メモリベース） |
+| 5 | Web フロントエンド | Deployment 1レプリカ | Deployment 2レプリカ以上 + CDN（CloudFront）でキャッシュ |
+| 6 | Redis | 単一 Pod（Deployment） | ElastiCache（Redis Cluster モード、Multi-AZ） |
+| 7 | データベース | なし（Redis のみ） | RDS PostgreSQL（Multi-AZ、自動バックアップ） |
+| 8 | Secret 管理 | base64 エンコードの Secret | AWS Secrets Manager + External Secrets Operator |
+| 9 | ConfigMap 管理 | 手動で kubectl apply | Git 管理 + ArgoCD で自動同期 |
+| 10 | ネットワークポリシー | なし（全 Pod 間通信可能） | NetworkPolicy で最小限の通信のみ許可 |
+| 11 | コンテナセキュリティ | root 実行、制限なし | 非 root 実行、readOnlyRootFilesystem、capability drop |
+| 12 | 監視 | なし | Prometheus + Grafana（ダッシュボード + SLI/SLO） |
+| 13 | アラート | なし | Alertmanager → Slack / PagerDuty |
+| 14 | ログ集約 | kubectl logs で個別確認 | Loki / Elasticsearch + Fluentd/Fluent Bit |
+| 15 | デプロイ方式 | 手動 kubectl apply | GitHub Actions + ArgoCD（GitOps） |
+| 16 | ロールバック | 手動で前のマニフェストを適用 | ArgoCD の自動 Sync + kubectl rollout undo |
+| 17 | バックアップ | なし | RDS 自動スナップショット + Redis RDB を S3 にバックアップ |
+| 18 | オートスケール | なし | HPA（水平）+ VPA（垂直）+ Cluster Autoscaler |
+| 19 | リソース管理 | requests/limits を手動設定 | VPA の推奨値ベース + LimitRange/ResourceQuota |
+| 20 | イメージ管理 | ローカルビルド + kind load | ECR + イメージスキャン（Trivy）+ digest 固定 |
+| 21 | RBAC | デフォルト ServiceAccount | 専用 ServiceAccount + 最小権限の Role/RoleBinding |
+| 22 | Pod Security | 制限なし | PodSecurity Admission（restricted プロファイル） |
+| 23 | 可用性 | 単一ノード、単一レプリカ | マルチ AZ、複数レプリカ、PDB 設定 |
+| 24 | 障害対応 | 手動で調査・復旧 | Runbook + 自動復旧 + オンコール体制 |
+| 25 | 非同期処理 | なし | SQS / Redis Streams でジョブキュー |
+| 26 | レート制限 | なし | Ingress アノテーション / API Gateway でレート制限 |
+
+---
+
+## 改善の段階的ロードマップ
+
+すべてを一度に改善する必要はない。以下の順序で段階的に進めることを推奨する。
+
+### Phase 1: 最低限の本番対応（1-2週間）
+
+| 対応項目 | 理由 |
+|---------|------|
+| レプリカ数を2以上に | 単一障害点の排除 |
+| TLS 対応 | 通信の暗号化は必須 |
+| Secret の暗号化 | セキュリティの基本 |
+| 非 root 実行 | コンテナセキュリティの基本 |
+
+### Phase 2: 運用基盤の整備（2-4週間）
+
+| 対応項目 | 理由 |
+|---------|------|
+| Prometheus + Grafana 導入 | 障害検知の基盤 |
+| ログ集約（Loki） | 調査効率の向上 |
+| CI/CD パイプライン | 人的ミスの排除 |
+| NetworkPolicy 設定 | セキュリティ強化 |
+
+### Phase 3: 可用性・スケーラビリティの強化（1-2ヶ月）
+
+| 対応項目 | 理由 |
+|---------|------|
+| Redis をマネージドサービスに移行 | SPOF の排除 |
+| HPA の設定 | 負荷変動への対応 |
+| PDB の設定 | メンテナンス時の可用性確保 |
+| マルチ AZ 構成 | AZ 障害への対応 |
+
+### Phase 4: 成熟した運用（継続的改善）
+
+| 対応項目 | 理由 |
+|---------|------|
+| SLI/SLO の定義 | サービスレベルの明確化 |
+| Chaos Engineering | 障害耐性の検証 |
+| コスト最適化 | Spot Instance、リソース最適化 |
+| イメージスキャンの自動化 | 継続的なセキュリティ |
+
+---
+
+## まとめ
+
+学習構成と本番構成の最大の違いは「壊れた時にどうなるか」である。
+
+- 学習構成: 壊れても自分のローカル環境なので影響なし
+- 本番構成: 壊れるとユーザ影響が発生し、ビジネスに損害を与える
+
+この差を埋めるために、冗長化・監視・セキュリティ・自動化の4つの柱を段階的に整備していく。
+完璧を目指す必要はなく、リスクの大きいものから順に対応することが重要である。

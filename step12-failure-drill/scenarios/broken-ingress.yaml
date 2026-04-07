@@ -1,18 +1,37 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: broken-ingress
+  name: mini-app-ingress
   namespace: mini-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
+  ingressClassName: nginx
   rules:
     - host: mini-app.local
       http:
         paths:
-          - path: /broken
+          # --- 意図的に壊した backend ---
+          # 正しくは simple-api / web だが、存在しない Service 名を指定している。
+          # これにより Ingress Controller がバックエンドを解決できない。
+          #
+          # 確認方法:
+          #   kubectl describe ingress mini-app-ingress -n mini-app
+          #   → backend に警告やエラーが表示される
+          #
+          # 復旧方法:
+          #   kubectl apply -f ../../step11-multi-resource-app/manifests/ingress.yaml
+          - path: /api
             pathType: Prefix
             backend:
               service:
-                # 意図的に存在しないService名
-                name: simple-api-wrong  # 正しくは simple-api
+                name: simple-api-typo
                 port:
-                  number: 8080
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-typo
+                port:
+                  number: 80

@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: simple-api
   namespace: mini-app
+  labels:
+    app: simple-api
 spec:
   replicas: 2
   selector:
@@ -14,22 +16,32 @@ spec:
         app: simple-api
     spec:
       containers:
-        - name: api
+        - name: simple-api
           image: simple-api:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
-          # 意図的に壊れたreadinessProbe（存在しないパス）
+            - containerPort: 3000
+          # --- 意図的に壊した readinessProbe ---
+          # 存在しないパス /healthz-nonexistent を指定している。
+          # これにより readinessProbe が常に失敗し、
+          # Pod は Endpoints から除外される。
           readinessProbe:
             httpGet:
-              path: /healthz  # 正しくは /health
-              port: 8080
+              path: /healthz-nonexistent
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
           resources:
             requests:
-              cpu: "100m"
               memory: "64Mi"
+              cpu: "50m"
             limits:
-              cpu: "200m"
               memory: "128Mi"
+              cpu: "100m"
