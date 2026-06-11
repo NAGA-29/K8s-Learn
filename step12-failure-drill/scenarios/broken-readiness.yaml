@@ -3,10 +3,13 @@ kind: Deployment
 metadata:
   name: simple-api
   namespace: mini-app
-  labels:
-    app: simple-api
 spec:
   replicas: 2
+  # ドリル用に Recreate を指定している。
+  # デフォルトの RollingUpdate のままだと「新 Pod が Ready にならない限り
+  # 旧 Pod が残り続ける」ため、Endpoints が空になる症状を観察できない
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: simple-api
@@ -14,34 +17,54 @@ spec:
     metadata:
       labels:
         app: simple-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
     spec:
       containers:
-        - name: simple-api
+        - name: api
           image: simple-api:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           ports:
-            - containerPort: 3000
+            - containerPort: 8080
+          env:
+            - name: APP_ENV
+              value: "development"
+          envFrom:
+            - configMapRef:
+                name: simple-api-config
+                optional: true
           # --- 意図的に壊した readinessProbe ---
           # 存在しないパス /healthz-nonexistent を指定している。
           # これにより readinessProbe が常に失敗し、
-          # Pod は Endpoints から除外される。
+          # Pod は Running のまま Endpoints から除外される（再起動はされない）。
+          #
+          # 確認方法:
+          #   kubectl get pods -n mini-app -l app=simple-api   → READY 0/1
+          #   kubectl get endpoints simple-api -n mini-app     → ENDPOINTS が空
+          #
+          # 復旧方法:
+          #   kubectl apply -f ../step11-mini-architecture/api.yaml
           readinessProbe:
             httpGet:
               path: /healthz-nonexistent
-              port: 3000
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 3
+          # livenessProbe は正しいパスを指定している。
+          # readiness だけが失敗するため「Running なのにトラフィックが来ない」
+          # 状態を観察できる（liveness まで壊すと再起動ループになり症状が変わる）
           livenessProbe:
             httpGet:
-              path: /api/health
-              port: 3000
+              path: /health
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
           resources:
             requests:
-              memory: "64Mi"
-              cpu: "50m"
-            limits:
-              memory: "128Mi"
               cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

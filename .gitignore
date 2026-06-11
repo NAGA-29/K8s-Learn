@@ -1,0 +1,4 @@
+# Goビルド成果物
+apps/simple-api/simple-api
+apps/realtime-api/realtime-api
+apps/realtime-api/server

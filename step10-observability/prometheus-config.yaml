@@ -15,8 +15,17 @@ data:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
             regex: true
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+          # __address__ は "PodのIP:containerPort" 形式で渡ってくる。
+          # prometheus.io/port アノテーションがある場合は、IP部分を残して
+          # ポート番号だけをアノテーションの値に置き換える
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
             action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
             target_label: __address__
-            regex: (.+)
-            replacement: ${1}
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod

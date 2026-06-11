@@ -75,6 +75,10 @@ API から `redis.mini-app.svc.cluster.local:6379`（または単に `redis:6379
 | `resources` | CPU 100m-200m、メモリ 64Mi-128Mi |
 | `prometheus.io/scrape` | Prometheus からメトリクスを収集される設定 |
 | `imagePullPolicy: Never` | ローカルビルドしたイメージを使用 |
+| `envFrom` (optional) | ConfigMap `simple-api-config` があれば `REDIS_HOST` / `REDIS_PORT` を注入。なければアプリのデフォルト値 (`redis:6379`) を使用。Step12 のドリルで利用する |
+
+API は `/api/count` エンドポイントで Redis の INCR を使った訪問カウンターを提供する。
+Redis に接続できない場合、このエンドポイントは 503 を返す（`/health` は Redis に依存しない）。
 
 ### web.yaml
 
@@ -88,10 +92,12 @@ API から `redis.mini-app.svc.cluster.local:6379`（または単に `redis:6379
 
 | パス | ルーティング先 | 説明 |
 |---|---|---|
+| `/api` | simple-api:8080 | API へのアクセス（`/api/message`, `/api/count`） |
 | `/` | simple-web:80 | フロントエンドへのアクセス |
-| `/api` | simple-api:8080 | API へのアクセス |
 
-`nginx.ingress.kubernetes.io/rewrite-target: /$2` により、パスの書き換えが行われる。
+simple-api はもともと `/api/...` プレフィックス付きでエンドポイントを定義しているため、
+パスの書き換え（rewrite-target）は使わずそのまま転送する。
+nginx Ingress では `/api` のようにより具体的（長い）パスが優先的にマッチする。
 
 ## 前提条件
 
@@ -99,11 +105,14 @@ API から `redis.mini-app.svc.cluster.local:6379`（または単に `redis:6379
 - simple-api と simple-web のイメージがビルド済みで、kind クラスタにロードされていること
 
 ```bash
-# イメージのビルドとロード（まだの場合）
-docker build -t simple-api:latest ./path/to/api
-docker build -t simple-web:latest ./path/to/web
-kind load docker-image simple-api:latest
-kind load docker-image simple-web:latest
+# イメージのビルドとロード（まだの場合、プロジェクトルートで実行）
+make build-images && make load-images
+
+# または手動で:
+docker build -t simple-api:latest apps/simple-api/
+docker build -t simple-web:latest apps/simple-web/
+kind load docker-image simple-api:latest --name k8s-learning
+kind load docker-image simple-web:latest --name k8s-learning
 ```
 
 ## 実行手順
@@ -176,13 +185,17 @@ kubectl -n mini-app get ingress
 # NAME               CLASS   HOSTS            ADDRESS     PORTS   AGE
 # mini-app-ingress   ...     mini-app.local   localhost   80      30s
 
-# 4. ブラウザで表示を確認
-#    http://mini-app.local      → Web のトップページ
-#    http://mini-app.local/api  → API のレスポンス
+# 4. ブラウザ / curl で表示を確認
+#    http://mini-app.local              → Web のトップページ
+#    http://mini-app.local/api/message  → API のメッセージ
+#    http://mini-app.local/api/count    → Redis を使った訪問カウンター（アクセスごとに増える）
+curl http://mini-app.local/api/message
+curl http://mini-app.local/api/count
 
 # 5. Pod 間の通信を確認
-kubectl -n mini-app exec -it deploy/simple-api -- wget -qO- http://redis:6379 || echo "Redis接続確認"
-kubectl -n mini-app exec -it deploy/simple-web -- wget -qO- http://simple-api:8080/health || echo "API接続確認"
+# Redis は HTTP ではないため、TCP の疎通を nc で確認する
+kubectl -n mini-app exec deploy/simple-api -- nc -zv redis 6379
+kubectl -n mini-app exec deploy/simple-web -- wget -qO- http://simple-api:8080/health
 ```
 
 ## よくある失敗

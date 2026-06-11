@@ -45,17 +45,18 @@
 </head>
 <body>
   <h1>K8s Learning - Web Frontend</h1>
-  <p>API からメッセージを取得します。</p>
+  <p>API からメッセージ・訪問カウント（Redis）を取得します。</p>
   <button id="fetchBtn">Fetch Message</button>
+  <button id="countBtn">Fetch Count</button>
   <div id="result">ボタンを押してください</div>
 
   <script>
-    document.getElementById("fetchBtn").addEventListener("click", function () {
+    function callApi(path) {
       var resultDiv = document.getElementById("result");
       resultDiv.textContent = "Loading...";
       resultDiv.className = "";
 
-      fetch("/api/message")
+      fetch(path)
         .then(function (res) {
           if (!res.ok) throw new Error("HTTP " + res.status);
           return res.json();
@@ -67,6 +68,13 @@
           resultDiv.textContent = "Error: " + err.message;
           resultDiv.className = "error";
         });
+    }
+
+    document.getElementById("fetchBtn").addEventListener("click", function () {
+      callApi("/api/message");
+    });
+    document.getElementById("countBtn").addEventListener("click", function () {
+      callApi("/api/count");
     });
   </script>
 </body>

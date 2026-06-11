@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hardened-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hardened-web
+  template:
+    metadata:
+      labels:
+        app: hardened-web
+    spec:
+      # Pod レベルのセキュリティ設定
+      securityContext:
+        # root (uid 0) での実行を禁止する。
+        # 違反するイメージは起動に失敗する（CreateContainerConfigError）
+        runAsNonRoot: true
+        # nginx-unprivileged イメージの実行ユーザー
+        runAsUser: 101
+        runAsGroup: 101
+      containers:
+        - name: web
+          # 通常の nginx イメージは root で起動してポート80を listen するため、
+          # 非root実行には unprivileged 版（ポート8080）を使う
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - containerPort: 8080
+          securityContext:
+            # コンテナ内のファイルシステムを読み取り専用にする。
+            # 書き込みが必要なパスは emptyDir を個別にマウントする
+            readOnlyRootFilesystem: true
+            # setuid バイナリ等による権限昇格を禁止する
+            allowPrivilegeEscalation: false
+            # Linux capability をすべて落とす（最小権限）
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # nginx-unprivileged は PID ファイルやキャッシュを /tmp に書くため、
+            # ここだけ書き込み可能な emptyDir を割り当てる
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+      volumes:
+        - name: tmp
+          emptyDir: {}

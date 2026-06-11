@@ -40,6 +40,9 @@ k6 run ws-test.js
 
 # ターゲット URL を指定
 k6 run -e WS_URL=ws://my-service:8080/ws ws-test.js
+
+# 同時接続数を変更（デフォルト100）
+k6 run -e VUS=500 ws-test.js
 ```
 
 ## 環境変数
@@ -48,6 +51,7 @@ k6 run -e WS_URL=ws://my-service:8080/ws ws-test.js
 |------|-----------|------|
 | `BASE_URL` | `http://localhost:8080` | HTTP テストのターゲット URL |
 | `WS_URL` | `ws://localhost:8080/ws` | WebSocket テストのターゲット URL |
+| `VUS` | `100` | WebSocket テストの最大同時接続数 |
 
 ## 結果の見方
 

@@ -25,6 +25,13 @@ spec:
           env:
             - name: APP_ENV
               value: "development"
+          # REDIS_HOST / REDIS_PORT を外部から注入できるようにしておく。
+          # ConfigMap が存在しない場合はアプリのデフォルト値 (redis:6379) が使われる。
+          # Step12 のシナリオ4（ConfigMap 値ミス）でこの仕組みを利用する
+          envFrom:
+            - configMapRef:
+                name: simple-api-config
+                optional: true
           readinessProbe:
             httpGet:
               path: /health

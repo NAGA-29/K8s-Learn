@@ -6,9 +6,15 @@ metadata:
 spec:
   containers:
     - name: oom
-      image: alpine
+      image: alpine:3.19
       command: ["/bin/sh", "-c"]
-      args: ["dd if=/dev/zero of=/dev/null bs=1M & tail -f /dev/null"]
+      # /dev/shm は tmpfs（メモリ上のファイルシステム）であり、
+      # ここへの書き込みはコンテナのメモリ使用量としてカウントされる。
+      # 64MiB を書き込もうとするため、limits の 32Mi を超えた時点で
+      # OOM Killer によりコンテナが強制終了される（OOMKilled）
+      args: ["dd if=/dev/zero of=/dev/shm/fill bs=1M count=64"]
       resources:
+        requests:
+          memory: "16Mi"
         limits:
           memory: "32Mi"

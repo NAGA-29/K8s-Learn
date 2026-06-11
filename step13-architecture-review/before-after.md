@@ -41,8 +41,8 @@ flowchart LR
 | 1 | ロードバランサー | NGINX Ingress Controller（kind内） | AWS ALB / NLB（マネージド、冗長化済み） |
 | 2 | TLS/SSL | なし（HTTP のみ） | cert-manager + Let's Encrypt で自動更新、または ACM |
 | 3 | DNS | /etc/hosts に手動設定 | Route 53 / Cloud DNS でドメイン管理 |
-| 4 | API サーバ | Deployment 1レプリカ | Deployment 3レプリカ以上 + HPA（CPU/メモリベース） |
-| 5 | Web フロントエンド | Deployment 1レプリカ | Deployment 2レプリカ以上 + CDN（CloudFront）でキャッシュ |
+| 4 | API サーバ | Deployment 2レプリカ | Deployment 3レプリカ以上 + HPA（CPU/メモリベース） |
+| 5 | Web フロントエンド | Deployment 2レプリカ | Deployment 2レプリカ以上 + CDN（CloudFront）でキャッシュ |
 | 6 | Redis | 単一 Pod（Deployment） | ElastiCache（Redis Cluster モード、Multi-AZ） |
 | 7 | データベース | なし（Redis のみ） | RDS PostgreSQL（Multi-AZ、自動バックアップ） |
 | 8 | Secret 管理 | base64 エンコードの Secret | AWS Secrets Manager + External Secrets Operator |
@@ -60,7 +60,7 @@ flowchart LR
 | 20 | イメージ管理 | ローカルビルド + kind load | ECR + イメージスキャン（Trivy）+ digest 固定 |
 | 21 | RBAC | デフォルト ServiceAccount | 専用 ServiceAccount + 最小権限の Role/RoleBinding |
 | 22 | Pod Security | 制限なし | PodSecurity Admission（restricted プロファイル） |
-| 23 | 可用性 | 単一ノード、単一レプリカ | マルチ AZ、複数レプリカ、PDB 設定 |
+| 23 | 可用性 | ローカル単一クラスタ、Redis 単一レプリカ | マルチ AZ、複数レプリカ、PDB 設定 |
 | 24 | 障害対応 | 手動で調査・復旧 | Runbook + 自動復旧 + オンコール体制 |
 | 25 | 非同期処理 | なし | SQS / Redis Streams でジョブキュー |
 | 26 | レート制限 | なし | Ingress アノテーション / API Gateway でレート制限 |

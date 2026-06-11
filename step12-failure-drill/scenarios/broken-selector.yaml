@@ -3,13 +3,11 @@ kind: Service
 metadata:
   name: simple-api
   namespace: mini-app
-  labels:
-    app: simple-api
 spec:
   type: ClusterIP
   ports:
-    - port: 80
-      targetPort: 3000
+    - port: 8080
+      targetPort: 8080
       protocol: TCP
   # --- 意図的に壊した selector ---
   # 正しくは app: simple-api だが、typo を入れている。
@@ -17,9 +15,9 @@ spec:
   #
   # 確認方法:
   #   kubectl get endpoints simple-api -n mini-app
-  #   → Endpoints: <none> と表示される
+  #   → ENDPOINTS が <none> と表示される
   #
   # 復旧方法:
-  #   kubectl apply -f ../../step11-multi-resource-app/manifests/api/service.yaml
+  #   kubectl apply -f ../step11-mini-architecture/api.yaml
   selector:
     app: simple-api-typo

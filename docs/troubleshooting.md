@@ -66,7 +66,7 @@ flowchart TD
 |------|------|
 | **症状** | Ingress リソースを作成したが外部からアクセスできない |
 | **原因** | Ingress Controller（nginx-ingress など）がクラスタにインストールされていない。Ingress リソースだけでは動作しない |
-| **対処** | `kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml` で nginx Ingress Controller を導入する |
+| **対処** | `kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml` で nginx Ingress Controller を導入する |
 
 ### 6. ConfigMap/Secretのキーミス
 

@@ -164,8 +164,8 @@ readinessProbe が失敗すると、PodはEndpointsから除外され、Service�
 
 ```bash
 # 正しい readinessProbe パスに戻した Deployment を再適用
-# （step11 のオリジナルの Deployment を再適用する）
-kubectl apply -f ../step11-multi-resource-app/manifests/api/deployment.yaml
+# （step11 のオリジナルのマニフェストを再適用する）
+kubectl apply -f ../step11-mini-architecture/api.yaml
 ```
 
 ### 再発防止策
@@ -217,8 +217,8 @@ Serviceは selector に一致するPodだけをEndpointsに登録するため、
 ### 復旧方法
 
 ```bash
-# 正しい selector の Service を再適用
-kubectl apply -f ../step11-multi-resource-app/manifests/api/service.yaml
+# 正しい selector の Service を再適用（step11 の api.yaml に含まれる）
+kubectl apply -f ../step11-mini-architecture/api.yaml
 ```
 
 ### 再発防止策
@@ -256,7 +256,10 @@ kubectl rollout status deployment simple-api -n mini-app --timeout=60s
 ### 確認コマンド
 
 ```bash
-# Pod のログでエラーを確認
+# カウンター API を叩いてエラーを確認（503 が返る）
+kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:8080/api/count || echo "エラー発生"
+
+# Pod のログでエラーを確認（redis error: ... が出力される）
 kubectl logs -n mini-app -l app=simple-api --tail=20
 
 # Pod 内の環境変数を確認
@@ -269,6 +272,9 @@ kubectl get configmap simple-api-config -n mini-app -o yaml
 ### 原因
 
 ConfigMap に誤った Redis ホスト名・ポートが設定されており、アプリケーションが Redis に接続できない。
+simple-api の Deployment は ConfigMap `simple-api-config` を `envFrom`（optional）で参照しているため、
+誤った値がそのまま環境変数として注入される。
+`/health` は Redis に依存しないため Pod は Ready のまま、という「一部機能だけ壊れる」障害になる。
 
 ### 復旧方法
 
@@ -282,6 +288,9 @@ kubectl create configmap simple-api-config \
 
 # Pod を再起動
 kubectl rollout restart deployment simple-api -n mini-app
+
+# 動作確認（カウンターが返れば復旧完了）
+kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:8080/api/count
 ```
 
 ### 再発防止策
@@ -304,8 +313,11 @@ APIのレスポンスがエラーになる。カウンター機能やキャッ�
 # Redis の Deployment を削除
 kubectl delete deployment redis -n mini-app
 
-# API にリクエストを送ってエラーを確認
-kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:3000/api/health || echo "エラー発生"
+# カウンター API にリクエストを送ってエラーを確認（503 が返る）
+kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:8080/api/count || echo "エラー発生"
+
+# /health は Redis に依存しないため正常に応答する（Pod は Ready のまま）
+kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:8080/health
 ```
 
 ### 確認コマンド
@@ -330,13 +342,13 @@ API は Redis に依存しているため、Redis が停止するとエラーが
 
 ```bash
 # Redis を再デプロイ
-kubectl apply -f ../step11-multi-resource-app/manifests/redis/
+kubectl apply -f ../step11-mini-architecture/redis.yaml
 
 # Redis が Ready になるのを待つ
 kubectl rollout status deployment redis -n mini-app --timeout=60s
 
 # API が正常に動作することを確認
-kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:3000/api/health
+kubectl exec -n mini-app deploy/simple-api -- wget -qO- http://localhost:8080/api/count
 ```
 
 ### 再発防止策
@@ -391,7 +403,7 @@ Ingress Controller が対応するバックエンドを見つけられず、リ�
 
 ```bash
 # 正しい Ingress を再適用
-kubectl apply -f ../step11-multi-resource-app/manifests/ingress.yaml
+kubectl apply -f ../step11-mini-architecture/ingress.yaml
 ```
 
 ### 再発防止策

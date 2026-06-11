@@ -3,24 +3,26 @@ kind: Ingress
 metadata:
   name: mini-app-ingress
   namespace: mini-app
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
+  ingressClassName: nginx
   rules:
     - host: mini-app.local
       http:
         paths:
-          - path: /()(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: simple-web
-                port:
-                  number: 80
-          - path: /api(/|$)(.*)
-            pathType: ImplementationSpecific
+          # simple-api は /api/message, /api/count のように
+          # もともと /api プレフィックス付きでルーティングを定義しているため、
+          # パスの書き換え（rewrite-target）は不要。そのまま転送する
+          - path: /api
+            pathType: Prefix
             backend:
               service:
                 name: simple-api
                 port:
                   number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: simple-web
+                port:
+                  number: 80

@@ -137,7 +137,7 @@ kubectl -n monitoring port-forward svc/grafana 3000:3000 &
 Prometheus が Pod のメトリクスを収集するには、Pod にアノテーションを追加する必要がある。
 
 ```bash
-# simple-api の Deployment にアノテーションを追加する例
+# Step08 でデプロイした probe-demo (simple-api) にアノテーションを追加する例
 kubectl patch deployment probe-demo --type=merge -p '{
   "spec": {
     "template": {

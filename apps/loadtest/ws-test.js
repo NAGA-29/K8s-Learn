@@ -3,6 +3,8 @@ import { check, sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
 
 const WS_URL = __ENV.WS_URL || 'ws://localhost:8080/ws';
+// 同時接続数は -e VUS=500 のように環境変数で変更できる（デフォルト100）
+const TARGET_VUS = parseInt(__ENV.VUS || '100', 10);
 
 const wsMessages = new Counter('ws_messages_received');
 const wsSendErrors = new Counter('ws_send_errors');
@@ -10,9 +12,9 @@ const wsConnectTime = new Trend('ws_connect_time', true);
 
 export const options = {
   stages: [
-    { duration: '30s', target: 100 },  // ramp up to 100 connections
-    { duration: '2m',  target: 100 },  // hold 100 connections
-    { duration: '15s', target: 0 },    // ramp down
+    { duration: '30s', target: TARGET_VUS },  // ramp up
+    { duration: '2m',  target: TARGET_VUS },  // hold
+    { duration: '15s', target: 0 },           // ramp down
   ],
   thresholds: {
     ws_connect_time: ['p(95)<2000'],   // 95% connect under 2s
