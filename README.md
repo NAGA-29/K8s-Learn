@@ -35,7 +35,7 @@
 | Docker | コンテナ実行環境 | 必須 |
 | kind | ローカルK8sクラスタ | 必須 |
 | kubectl | K8s操作CLI | 必須 |
-| Go 1.22+ | APIサーバービルド | 必須 |
+| Go 1.22+ | APIサーバーのローカル実行・改造（イメージビルドはDockerのみで可能） | 任意 |
 | Node.js 18+ | フロント開発（任意） | 任意 |
 | make | ビルド自動化 | 任意 |
 | k6 | 負荷試験 | 任意 |
@@ -88,6 +88,17 @@ Step01から順番に進めてください。各ステップのディレクト�
 | 16 | WebSocketスケール | 複数Pod対応 | ★★★★☆ |
 | 17 | WebSocket負荷試験 | ボトルネック体験 | ★★★★★ |
 
+### 応用編（advanced/）
+
+Step17まで完了した人向けの発展テーマ。順不同で取り組める。
+
+| 演習 | タイトル | 概要 |
+|------|----------|------|
+| ex01 | ローリングアップデートとロールバック | 無停止デプロイと切り戻し |
+| ex02 | Job / CronJob | バッチ処理と定期実行 |
+| ex03 | セキュリティ強化とPDB | 非root実行・readOnlyRootFilesystem・PodDisruptionBudget |
+| ex04 | NetworkPolicy | Pod間通信の最小権限化 |
+
 ---
 
 ## ディレクトリ構成
@@ -102,18 +113,20 @@ K8s-Learn/
 │   ├── glossary.md                    # 用語集
 │   └── troubleshooting.md            # トラブルシューティングガイド
 ├── apps/
-│   ├── simple-api/                    # Go製APIサーバー
+│   ├── simple-api/                    # Go製APIサーバー（Redisカウンター付き）
 │   │   ├── Dockerfile
 │   │   ├── main.go
 │   │   └── go.mod
 │   ├── simple-web/                    # フロントエンド
 │   │   ├── Dockerfile
+│   │   ├── nginx.conf
 │   │   └── index.html
 │   ├── realtime-api/                  # WebSocketサーバー
 │   │   ├── Dockerfile
 │   │   ├── main.go
 │   │   └── go.mod
 │   └── loadtest/                      # k6負荷試験スクリプト
+│       ├── http-test.js
 │       └── ws-test.js
 ├── step01-kind-cluster/               # kindクラスタ構築
 │   ├── README.md
@@ -137,7 +150,8 @@ K8s-Learn/
 │   └── deployment.yaml
 ├── step07-volume/                     # Volume
 │   ├── README.md
-│   └── pvc.yaml
+│   ├── pvc.yaml
+│   └── deployment.yaml
 ├── step08-probes-resources/           # Probes/Resources
 │   ├── README.md
 │   └── deployment.yaml
@@ -147,7 +161,9 @@ K8s-Learn/
 │   └── hpa.yaml
 ├── step10-observability/              # 可観測性
 │   ├── README.md
-│   └── prometheus/
+│   ├── namespace.yaml
+│   ├── prometheus-*.yaml
+│   └── grafana-deployment.yaml
 ├── step11-mini-architecture/          # ミニ構成
 │   ├── README.md
 │   └── *.yaml
@@ -155,18 +171,26 @@ K8s-Learn/
 │   ├── README.md
 │   └── scenarios/
 ├── step13-architecture-review/        # アーキテクチャレビュー
-│   └── README.md
+│   ├── README.md
+│   ├── review-template.md
+│   └── before-after.md
 ├── step14-eks-migration/              # EKS移行ガイド
-│   └── README.md
+│   ├── README.md
+│   └── terraform/
 ├── step15-websocket-basics/           # WebSocket基礎
 │   ├── README.md
 │   └── *.yaml
 ├── step16-websocket-scale/            # WebSocketスケール
 │   ├── README.md
 │   └── *.yaml
-└── step17-websocket-loadtest/         # WebSocket負荷試験
+├── step17-websocket-loadtest/         # WebSocket負荷試験
+│   └── README.md
+└── advanced/                          # 応用編（Step17完了後の発展テーマ）
     ├── README.md
-    └── *.yaml
+    ├── ex01-rolling-update/
+    ├── ex02-job-cronjob/
+    ├── ex03-security-hardening/
+    └── ex04-networkpolicy/
 ```
 
 ---

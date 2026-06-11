@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: batch-demo
+spec:
+  # 3回成功するまで Pod を実行する（completions）
+  # 同時に2つまで並列実行する（parallelism）
+  completions: 3
+  parallelism: 2
+  # 失敗時のリトライ上限。超えると Job は Failed になる
+  backoffLimit: 2
+  # 完了した Job を100秒後に自動削除する（後片付け）
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      # Job の Pod は再起動ではなく「新しい Pod の作り直し」で
+      # リトライされるため、OnFailure か Never を指定する
+      restartPolicy: Never
+      containers:
+        - name: batch
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "バッチ処理を開始: $(date)"
+              sleep 5
+              echo "バッチ処理が完了: $(date)"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "16Mi"
+            limits:
+              cpu: "100m"
+              memory: "32Mi"

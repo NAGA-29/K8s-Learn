@@ -1,0 +1,86 @@
+# mini-app namespace に最小権限のネットワークポリシーを適用する。
+#
+# 通信経路の設計:
+#   ingress-nginx → simple-web:80
+#   ingress-nginx → simple-api:8080
+#   simple-web    → simple-api:8080  (nginx のリバースプロキシ経由)
+#   simple-api    → redis:6379
+#   上記以外の Pod 間通信はすべて拒否する
+---
+# 1. デフォルト拒否: mini-app 内の全 Pod への ingress 通信を遮断する。
+#    これを土台に、必要な通信だけを個別ポリシーで許可していく（allowlist 方式）
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: mini-app
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# 2. simple-web への通信は Ingress Controller からのみ許可する
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-from-ingress
+  namespace: mini-app
+spec:
+  podSelector:
+    matchLabels:
+      app: simple-web
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# 3. simple-api への通信は Ingress Controller と simple-web からのみ許可する
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-from-web-and-ingress
+  namespace: mini-app
+spec:
+  podSelector:
+    matchLabels:
+      app: simple-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app: simple-web
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# 4. redis への通信は simple-api からのみ許可する
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-from-api
+  namespace: mini-app
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: simple-api
+      ports:
+        - protocol: TCP
+          port: 6379

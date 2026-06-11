@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hardened-web
+spec:
+  # ノードの drain 等の「自発的な退避 (voluntary disruption)」時に、
+  # 最低1台の Pod が必ず Ready で残ることを保証する。
+  # ノード障害などの非自発的な停止は防げない点に注意
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: hardened-web

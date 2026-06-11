@@ -26,9 +26,13 @@ step01: ## Step01: kindクラスタ構築
 	kind create cluster --name $(CLUSTER_NAME) --config step01-kind-cluster/kind-config.yaml
 
 step11: ## Step11: ミニ構成をデプロイ
+	# namespace を先に適用する（ディレクトリ一括適用はファイル名順のため、
+	# namespace より先に他リソースが適用されて初回実行が失敗する）
+	kubectl apply -f step11-mini-architecture/namespace.yaml
 	kubectl apply -f step11-mini-architecture/
 
 step15: ## Step15: WebSocket基礎をデプロイ
+	kubectl apply -f step11-mini-architecture/namespace.yaml
 	kubectl apply -f step15-websocket-basics/
 
 step17: ## Step17: WebSocket負荷試験を実行

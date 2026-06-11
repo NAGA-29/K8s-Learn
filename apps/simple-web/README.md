@@ -5,7 +5,7 @@ Kubernetes 学習用のフロントエンドアプリケーションとして使
 
 ## 概要
 
-- シンプルな HTML ページで `simple-api` からメッセージを取得・表示
+- シンプルな HTML ページで `simple-api` からメッセージ (`/api/message`) と訪問カウント (`/api/count`) を取得・表示
 - Nginx が静的ファイル配信と API へのリバースプロキシを担当
 - `/api/*` へのリクエストは `simple-api:8080` に転送 (K8s Service 経由)
 

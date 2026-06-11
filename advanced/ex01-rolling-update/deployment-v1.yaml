@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rollout-demo
+  annotations:
+    kubernetes.io/change-cause: "v1: nginx 1.25"
+spec:
+  replicas: 3
+  # ローリングアップデートの挙動を制御する設定。
+  # maxUnavailable: 0 → 更新中も Ready な Pod 数を維持する（無停止）
+  # maxSurge: 1      → 一時的に replicas + 1 台まで作って入れ替える
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: rollout-demo
+  template:
+    metadata:
+      labels:
+        app: rollout-demo
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+          # readinessProbe がないと「起動しただけ」の Pod に
+          # 旧 Pod の削除が進んでしまい、無停止にならない
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"

@@ -85,22 +85,25 @@ k6 run http-test.js
 
 ### 4. WebSocketテスト（接続数を段階的に増やす）
 
+接続数はスクリプト側の `VUS` 環境変数（`-e` オプション）で指定する。
+ramp-up 30秒 → 維持 2分 → ramp-down 15秒 のステージ構成で実行される。
+
 #### 100接続
 
 ```bash
-K6_WS_URL=ws://localhost:8080/ws k6 run --vus 100 --duration 1m ws-test.js
+k6 run -e WS_URL=ws://localhost:8080/ws -e VUS=100 ws-test.js
 ```
 
 #### 500接続
 
 ```bash
-K6_WS_URL=ws://localhost:8080/ws k6 run --vus 500 --duration 1m ws-test.js
+k6 run -e WS_URL=ws://localhost:8080/ws -e VUS=500 ws-test.js
 ```
 
 #### 1000接続
 
 ```bash
-K6_WS_URL=ws://localhost:8080/ws k6 run --vus 1000 --duration 1m ws-test.js
+k6 run -e WS_URL=ws://localhost:8080/ws -e VUS=1000 ws-test.js
 ```
 
 ### 5. 別ターミナルでメトリクス監視

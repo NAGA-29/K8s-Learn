@@ -1,22 +1,41 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
 	requestCount atomic.Int64
 	startTime    = time.Now()
+	rdb          *redis.Client
 )
 
 func main() {
+	// Redis は /api/count でのみ使用する。接続は遅延確立されるため、
+	// Redis が存在しない環境（Step08/09 など）でも起動とヘルスチェックには影響しない
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "redis"
+	}
+	redisPort := os.Getenv("REDIS_PORT")
+	if redisPort == "" {
+		redisPort = "6379"
+	}
+	rdb = redis.NewClient(&redis.Options{
+		Addr:        redisHost + ":" + redisPort,
+		DialTimeout: 2 * time.Second,
+	})
+
 	e := echo.New()
 
 	e.Use(middleware.Logger())
@@ -25,6 +44,7 @@ func main() {
 
 	e.GET("/health", healthHandler)
 	e.GET("/api/message", messageHandler)
+	e.GET("/api/count", countHandler)
 	e.GET("/metrics", metricsHandler)
 
 	e.Logger.Fatal(e.Start(":8080"))
@@ -46,6 +66,24 @@ func healthHandler(c echo.Context) error {
 func messageHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message":   "Hello from simple-api!",
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+func countHandler(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 2*time.Second)
+	defer cancel()
+
+	count, err := rdb.Incr(ctx, "visit_count").Result()
+	if err != nil {
+		c.Logger().Errorf("redis error: %v", err)
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{
+			"error": "redis unavailable: " + err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"count":     count,
 		"timestamp": time.Now().Format(time.RFC3339),
 	})
 }

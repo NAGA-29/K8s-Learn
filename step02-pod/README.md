@@ -38,9 +38,15 @@ kubectl logs my-nginx
 # 4. Pod 内に入ってシェル操作する
 kubectl exec -it my-nginx -- /bin/bash
 
-# (Pod 内で) nginx が動いていることを確認
-curl localhost:80
+# (Pod 内で) nginx の設定や配信ファイルを確認
+# ※ nginx 公式イメージには curl / wget が入っていないため、HTTP での確認は手順 4.5 で行う
+cat /usr/share/nginx/html/index.html
 exit
+
+# 4.5. port-forward でホストから nginx の応答を確認する
+kubectl port-forward pod/my-nginx 8080:80 &
+curl http://localhost:8080
+kill %1   # port-forward を終了する
 
 # 5. Pod の詳細情報を確認する
 kubectl describe pod my-nginx

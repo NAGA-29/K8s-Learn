@@ -49,7 +49,7 @@ kubectl get svc nginx-service
 
 ```bash
 # 1. NGINX Ingress Controller を kind 用にインストールする
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/kind/deploy.yaml
 
 # 2. Ingress Controller の Pod が Ready になるまで待つ
 kubectl wait --namespace ingress-nginx \

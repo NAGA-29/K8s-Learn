@@ -57,7 +57,7 @@ flowchart LR
 - コンポーネントは Web / API / Redis の3つ
 - Ingress でパスベースルーティング
 - API が Redis に依存
-- すべて単一レプリカ（学習環境のため）
+- Web/API は 2 レプリカ、Redis は単一レプリカ（学習環境のため）
 
 ---
 
@@ -66,7 +66,7 @@ flowchart LR
 ### 可用性の問題
 
 - **Redis が単一 Pod（SPOF）**: Redis が落ちると API 全体が機能停止する
-- **レプリカ数が不十分**: 各コンポーネントが1台構成であり、1台落ちるとサービス停止
+- **レプリカ数が不十分**: Web/API は 2 レプリカあるが、Redis は 1 台構成。Redis が落ちるとカウンター機能が停止
 - **PodDisruptionBudget 未設定**: ノードメンテナンス時にすべての Pod が同時に退避される可能性がある
 - **ヘルスチェックが不十分**: readinessProbe / livenessProbe の設計が最低限
 
