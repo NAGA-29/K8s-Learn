@@ -1,0 +1,48 @@
+# Deployment は Pod を直接 1 つだけ作るのではなく、
+# 指定した数の Pod を維持するための Kubernetes リソースです。
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  # Deployment 自体の名前です。
+  # kubectl get deployment nginx-deployment のように指定できます。
+  name: nginx-deployment
+
+  # Deployment に付けるラベルです。
+  # 検索や整理に使えますが、Pod を選ぶ条件そのものは spec.selector で定義します。
+  labels:
+    app: nginx
+
+spec:
+  # 起動しておきたい Pod の数です。
+  # Pod が削除されたり停止したりしても、Deployment が 3 個になるように再作成します。
+  replicas: 3
+
+  # この Deployment が管理対象として選ぶ Pod の条件です。
+  # 下の template.metadata.labels と必ず一致させる必要があります。
+  selector:
+    matchLabels:
+      app: nginx
+
+  # Deployment が作成する Pod のテンプレートです。
+  # ここに書いた内容を元に ReplicaSet が Pod を作成します。
+  template:
+    metadata:
+      # Pod に付けるラベルです。
+      # spec.selector.matchLabels と一致しているため、この Deployment の管理対象になります。
+      labels:
+        app: nginx
+
+    spec:
+      containers:
+        # Pod の中で起動するコンテナの定義です。
+        - name: nginx
+
+          # 使用するコンテナイメージです。
+          # nginx:1.25 というタグを指定して、意図しないバージョン変更を避けます。
+          image: nginx:1.25
+
+          # コンテナが待ち受けるポートです。
+          # これはコンテナ内部のポート宣言であり、外部公開には Service が必要です。
+          ports:
+            - containerPort: 80
